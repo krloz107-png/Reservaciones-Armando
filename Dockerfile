@@ -1,4 +1,4 @@
-# Usamos una imagen oficial de Java 17 (o la versión que uses)
+# Usamos una imagen oficial de Java 17
 FROM eclipse-temurin:17-jdk-alpine
 
 # Directorio de trabajo dentro del contenedor
@@ -7,6 +7,11 @@ WORKDIR /app
 # Copiamos el archivo pom.xml y el wrapper de Maven
 COPY mvnw .
 COPY .mvn .mvn
+
+# --- NUEVO: Damos permisos de ejecución al mvnw ---
+RUN chmod +x mvnw
+
+# Copiamos el pom.xml completo
 COPY pom.xml .
 
 # Descargamos las dependencias
