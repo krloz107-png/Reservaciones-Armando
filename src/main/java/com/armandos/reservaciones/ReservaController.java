@@ -11,13 +11,26 @@ public class ReservaController {
     @Autowired
     private ReservaService service;
 
-    @PostMapping
-    public ResponseEntity<String> crearReserva(@RequestBody Reserva reserva) {
-        String resultado = service.procesarReserva(reserva);
-        if (resultado.startsWith("Error")) {
-            return ResponseEntity.badRequest().body(resultado);
+    @PostMapping("/reservas")
+    public ResponseEntity<?> crearReserva(@RequestBody Reserva reserva) {
+        try {
+            // 1. Guardar en la base de datos (esto ya funciona)
+            reservaRepository.save(reserva);
+
+            // 2. Intentar enviar el correo (si falla, no debe romper la respuesta al usuario)
+            try {
+                emailService.enviarCorreoConfirmacion(reserva);
+            } catch (Exception e) {
+                System.err.println("Advertencia: No se pudo enviar el correo, pero la reserva se guardó: " + e.getMessage());
+            }
+
+            // 3. RESPUESTA EXITOSA OBLIGATORIA PARA EL NAVEGADOR
+            return ResponseEntity.ok().body(Map.of("success", true, "message", "¡Reservación creada con éxito!"));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "error", e.getMessage()));
         }
-        return ResponseEntity.ok(resultado);
     }
 
     @GetMapping
