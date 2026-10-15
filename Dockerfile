@@ -1,5 +1,5 @@
-# 1. Usamos una imagen que ya trae Maven y Java instalados oficialmente
-FROM maven:3.9.6-eclipse-temurin-17-alpine AS build
+# 1. Usamos Maven con Java 21
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
 
 # Directorio de trabajo
 WORKDIR /app
@@ -11,11 +11,11 @@ RUN mvn dependency:go-offline -B
 # Copiamos el código fuente
 COPY src src
 
-# Compilamos el proyecto directamente con el Maven del sistema
+# Compilamos el proyecto
 RUN mvn package -DskipTests
 
-# 2. Imagen final ligera para correr la aplicación
-FROM eclipse-temurin:17-jre-alpine
+# 2. Imagen final ligera para correr la aplicación con Java 21
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Copiamos el jar compilado desde la etapa anterior
