@@ -1,41 +1,40 @@
 package com.armandos.reservaciones;
 
-import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/reservas")
+@RequestMapping("/api")
 public class ReservaController {
 
     @Autowired
-    private ReservaService service;
+    private ReservaRepository reservaRepository;
+
+    // Si tienes un servicio de correo, descomenta la siguiente línea y su inyección:
+    // @Autowired
+    // private EmailService emailService;
 
     @PostMapping("/reservas")
-    public ResponseEntity<?> crearReserva(@RequestBody Reserva reserva) {
+    public ResponseEntity<String> crearReserva(@RequestBody Reserva reserva) {
         try {
-            // 1. Guardar en la base de datos (esto ya funciona)
+            // 1. Guardar en la base de datos de PostgreSQL
             reservaRepository.save(reserva);
 
-            // 2. Intentar enviar el correo (si falla, no debe romper la respuesta al usuario)
+            // 2. Intentar enviar el correo (opcional, protegido con try-catch para que no bloquee)
             try {
-                emailService.enviarCorreoConfirmacion(reserva);
+                // emailService.enviarCorreoConfirmacion(reserva);
             } catch (Exception e) {
-                System.err.println("Advertencia: No se pudo enviar el correo, pero la reserva se guardó: " + e.getMessage());
+                System.err.println("Advertencia al enviar correo: " + e.getMessage());
             }
 
-            // 3. RESPUESTA EXITOSA OBLIGATORIA PARA EL NAVEGADOR
-            return ResponseEntity.ok().body(Map.of("success", true, "message", "¡Reservación creada con éxito!"));
+            // 3. Respuesta exitosa para desbloquear el botón en la página web
+            return ResponseEntity.ok("¡Reservación creada con éxito!");
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", e.getMessage()));
+                    .body("Error al procesar la reserva: " + e.getMessage());
         }
-    }
-
-    @GetMapping
-    public ResponseEntity<java.util.List<Reserva>> verReservas() {
-        return ResponseEntity.ok(service.obtenerTodasLasReservas());
     }
 }
