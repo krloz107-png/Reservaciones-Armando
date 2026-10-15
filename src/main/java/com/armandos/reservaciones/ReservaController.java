@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.web.bind.annotation.*;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api")
@@ -24,30 +25,30 @@ public class ReservaController {
     @PostMapping("/reservas")
     public ResponseEntity<String> crearReserva(@RequestBody Reserva reserva) {
         try {
-            // 1. Guardar en la base de datos de PostgreSQL
+            // 1. Guardar en la base de datos de PostgreSQL (Esto es rapidísimo)
             reservaRepository.save(reserva);
 
-            // 2. Intentar enviar el correo de confirmación
-            try {
-                if (mailSender != null) {
-                    SimpleMailMessage message = new SimpleMailMessage();
-                    message.setFrom(remiteEmail); // Obligatorio para que Gmail no rechace el envío
-                    message.setTo(reserva.getEmail());
-                    message.setSubject("¡Mesa Confirmada! - Armando's Pescados y Mariscos");
-                    message.setText("Hola " + reserva.getNombre() +
-                            ", ¡Gracias por elegir Armando's Pescados y Mariscos! Tu reservación para " +
-                            reserva.getPersonas() + " personas el día " + reserva.getFechaHora() +
-                            " ha sido confirmada con éxito.");
-                    mailSender.send(message);
-                    System.out.println("Correo enviado exitosamente a: " + reserva.getEmail());
+            // 2. Enviar el correo en segundo plano (Asíncrono) para que NUNCA congele la página
+            CompletableFuture.runAsync(() -> {
+                try {
+                    if (mailSender != null) {
+                        SimpleMailMessage message = new SimpleMailMessage();
+                        message.setFrom(remiteEmail);
+                        message.setTo(reserva.getEmail());
+                        message.setSubject("¡Mesa Confirmada! - Armando's Pescados y Mariscos");
+                        message.setText("Hola " + reserva.getNombre() +
+                                ", ¡Gracias por elegir Armando's Pescados y Mariscos! Tu reservación para " +
+                                reserva.getPersonas() + " personas el día " + reserva.getFechaHora() +
+                                " ha sido confirmada con éxito.");
+                        mailSender.send(message);
+                        System.out.println("Correo enviado exitosamente a: " + reserva.getEmail());
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error al enviar correo en segundo plano: " + e.getMessage());
                 }
-            } catch (Exception e) {
-                // Imprime el error exacto en los logs de Render si falla el correo
-                System.err.println("Error detallado al enviar correo: " + e.getMessage());
-                e.printStackTrace();
-            }
+            });
 
-            // 3. Respuesta exitosa inmediata para desbloquear el navegador
+            // 3. Responder al navegador INMEDIATAMENTE para liberar el botón
             return ResponseEntity.ok("¡Reservación creada con éxito!");
 
         } catch (Exception e) {
