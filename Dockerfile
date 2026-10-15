@@ -1,27 +1,28 @@
-# Usamos una imagen oficial de Java 17
-FROM eclipse-temurin:17-jdk-alpine
+# 1. Usamos una imagen que ya trae Maven y Java instalados oficialmente
+FROM maven:3.9.6-eclipse-temurin-17-alpine AS build
 
-# Directorio de trabajo dentro del contenedor
+# Directorio de trabajo
 WORKDIR /app
 
-# Copiamos el archivo pom.xml y el wrapper de Maven
-COPY mvnw .
-COPY .mvn .mvn
-
-# --- NUEVO: Damos permisos de ejecución al mvnw ---
-RUN chmod +x mvnw
-
-# Copiamos el pom.xml completo
+# Copiamos primero el pom.xml para descargar dependencias
 COPY pom.xml .
-
-# Descargamos las dependencias
-RUN ./mvnw dependency:go-offline -B
+RUN mvn dependency:go-offline -B
 
 # Copiamos el código fuente
 COPY src src
 
-# Compilamos el proyecto en la nube de Render
-RUN ./mvnw package -DskipTests
+# Compilamos el proyecto directamente con el Maven del sistema
+RUN mvn package -DskipTests
+
+# 2. Imagen final ligera para correr la aplicación
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+
+# Copiamos el jar compilado desde la etapa anterior
+COPY --from=build /app/target/reservaciones-0.0.1-SNAPSHOT.jar app.jar
+
+# Exponemos el puerto de la app
+EXPOSE 8080
 
 # Ejecutamos la aplicación
-CMD ["java", "-jar", "target/reservaciones-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
